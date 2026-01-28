@@ -27,7 +27,7 @@ def check_market_status(ticker_code):
         if start <= current_time <= end:
             return True, "🟢 한국 정규장 운영 중"
         else:
-            return False, "⏹️ 한국 주식 시장 시간이 아닙니다. (09:00~15:30)"
+            return False, "⏹️ 한국 주식 시장 시간이 아닙니다. (09:20~15:30)"
 
     # 미국 주식 (기본값)
     else:
@@ -38,7 +38,7 @@ def check_market_status(ticker_code):
         if current_time >= start or current_time <= end:
             return True, "🟢 미국 정규장 운영 중"
         else:
-            return False, "⏹️ 미국 주식 시장 시간이 아닙니다. (23:30~06:00)"
+            return False, "⏹️ 미국 주식 시장 시간이 아닙니다. (23:50~06:00)"
 
 # 3. 데이터 분석 함수
 def get_stand_strategy(ticker_code):
