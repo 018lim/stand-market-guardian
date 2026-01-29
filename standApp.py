@@ -54,7 +54,7 @@ def check_market_status(ticker_code, mode):
 
     # 미국 주식 (그 외)
     else:
-        start = time(23, 20)
+        start = time(23, 50)
         end = time(6, 0)
         # 자정을 넘기는 시간대 계산
         if current_time >= start or current_time <= end:
