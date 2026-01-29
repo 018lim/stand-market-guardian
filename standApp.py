@@ -89,7 +89,7 @@ def get_stand_strategy(ticker_code):
 # UI 레이아웃
 # -----------------------------------------------------------
 st.title("🛡️ BuyTheDeep")
-st.markdown("정규장 운영 시간에만 작동하며, **전일 확정 종가**를 기준으로 감시합니다.")
+st.markdown("정규장 운영 20분 후부터 작동합니다.")
 
 user_ticker = st.text_input("종목 코드 입력 (예: 005930.KS, QQQ, NVDA)", value="005930.KS")
 
@@ -131,4 +131,4 @@ if st.button("실시간 감시 시작"):
             st.pyplot(fig)
 
 st.markdown("---")
-st.caption("※ 본 앱은 정규 시장 운영 시간에만 분석 결과를 제공합니다.")
+st.caption("※ 본 앱은 정규 시장 운영 20분 후부터 분석 결과를 제공합니다.")
