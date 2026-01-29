@@ -6,7 +6,9 @@ import matplotlib.pyplot as plt
 from datetime import datetime, timedelta, time
 import pytz
 
-# 1. 페이지 설정
+# -----------------------------------------------------------
+# 1. 페이지 및 초기 설정
+# -----------------------------------------------------------
 st.set_page_config(page_title="BuyTheDeep", layout="centered")
 plt.style.use('fivethirtyeight')
 
@@ -14,18 +16,21 @@ plt.style.use('fivethirtyeight')
 if 'run_mode' not in st.session_state:
     st.session_state['run_mode'] = None  # None, 'REAL', 'MOCK_KR', 'MOCK_US'
 
+# -----------------------------------------------------------
 # 2. 시장 시간 체크 함수 (모드에 따른 분기 처리)
+# -----------------------------------------------------------
 def check_market_status(ticker_code, mode):
+    # [핵심] 서버 위치와 상관없이 무조건 '한국 시간(KST)' 기준
     timezone_kr = pytz.timezone('Asia/Seoul')
     now = datetime.now(timezone_kr)
     
     # [A] 강제 실행 모드 (시간 조작)
     if mode == 'MOCK_KR':
-        current_time = time(14, 0, 0) # 한국장 시간 (오후 2시)
-        weekday = 2 # 수요일
+        current_time = time(14, 0, 0) # 한국장 시간 (수요일 오후 2시)
+        weekday = 2 
         is_mock = True
     elif mode == 'MOCK_US':
-        current_time = time(1, 0, 0) # 미국장 시간 (새벽 1시)
+        current_time = time(1, 0, 0) # 미국장 시간 (수요일 새벽 1시)
         weekday = 2
         is_mock = True
     else:
@@ -38,25 +43,28 @@ def check_market_status(ticker_code, mode):
     if weekday >= 5:
         return False, "🛑 주말입니다. 시장이 열리지 않습니다."
 
-    # 한국 주식
-    if ticker_code.endswith(".KS") or ticker_code.endswith(".KQ"):
+    # 한국 주식 (.KS: 코스피, .KQ: 코스닥)
+    if ticker_code.upper().endswith(".KS") or ticker_code.upper().endswith(".KQ"):
         start = time(9, 20)
         end = time(15, 30)
         if start <= current_time <= end:
             return True, "🟢 한국 정규장 운영 중" + (" (강제 실행)" if is_mock else "")
         else:
-            return False, f"⏹️ 한국 주식 시장 시간이 아닙니다. (현재: {current_time.strftime('%H:%M')})"
+            return False, f"⏹️ 한국 주식 시장 시간이 아닙니다. (현재 KST: {current_time.strftime('%H:%M')})"
 
-    # 미국 주식
+    # 미국 주식 (그 외)
     else:
         start = time(23, 20)
         end = time(6, 0)
+        # 자정을 넘기는 시간대 계산
         if current_time >= start or current_time <= end:
             return True, "🟢 미국 정규장 운영 중" + (" (강제 실행)" if is_mock else "")
         else:
-            return False, f"⏹️ 미국 주식 시장 시간이 아닙니다. (현재: {current_time.strftime('%H:%M')})"
+            return False, f"⏹️ 미국 주식 시장 시간이 아닙니다. (현재 KST: {current_time.strftime('%H:%M')})"
 
+# -----------------------------------------------------------
 # 3. 데이터 분석 함수
+# -----------------------------------------------------------
 def get_stand_strategy(ticker_code, mode):
     # 모드값을 넘겨서 시간 체크
     is_open, msg = check_market_status(ticker_code, mode)
@@ -64,15 +72,20 @@ def get_stand_strategy(ticker_code, mode):
         return {"error": msg}
 
     ticker = yf.Ticker(ticker_code)
+    # 통계용 5년치 데이터
     hist = ticker.history(period="1250d")
     
     if len(hist) < 5:
         return {"error": "데이터를 불러오는 데 실패했습니다."}
 
+    # 기준가 설정 (전일 확정 종가 = 뒤에서 두 번째)
     base_close = float(hist['Close'].iloc[-2])
     base_date = hist.index[-2].strftime('%Y-%m-%d')
+    
+    # 실시간 현재가
     current_price = float(hist['Close'].iloc[-1])
 
+    # 통계 계산
     confirmed_df = hist.iloc[:-1].copy()
     confirmed_df['Return'] = confirmed_df['Close'].pct_change()
     mean = float(confirmed_df['Return'].mean())
@@ -94,7 +107,7 @@ def get_stand_strategy(ticker_code, mode):
     }
 
 # -----------------------------------------------------------
-# UI 레이아웃
+# 4. UI 레이아웃
 # -----------------------------------------------------------
 st.title("🛡️ BuyTheDeep")
 st.markdown("정규장 운영 20분 후부터 작동합니다.")
@@ -117,7 +130,7 @@ with col3:
         st.session_state['run_mode'] = 'MOCK_US'
 
 # [캡션 추가]
-st.caption("⚠️ **주의:** 강제 실행 시, 입력한 종목의 국가와 버튼의 국가가 맞는지 확인하세요. (시간만 강제로 설정됩니다.)")
+st.caption("⚠️ **주의:** 강제 실행 시, 입력한 종목의 국가와 버튼의 국가가 맞는지 확인하세요.")
 
 # [실행 로직] 버튼을 눌러서 모드가 설정되어 있으면 실행
 if st.session_state['run_mode']:
@@ -133,16 +146,28 @@ if st.session_state['run_mode']:
             st.success(res['status_msg'])
             st.markdown("---")
             
-            # 메인 지표
-            st.subheader(f"📍 기준 가격 ({res['base_date']} 종가): {res['base_close']:,.0f}")
+            # -----------------------------------------------------------
+            # [포맷 설정] 종목에 따라 소수점 자리수 결정
+            # -----------------------------------------------------------
+            if user_ticker.upper().endswith((".KS", ".KQ")):
+                p_fmt = ",.0f"  # 한국(KOSPI, KOSDAQ): 정수 (예: 55,000)
+            else:
+                p_fmt = ",.2f"  # 미국(NASDAQ, NYSE 등): 소수점 2자리 (예: 150.25)
+            
+            # 메인 지표 표시
+            st.subheader(f"📍 기준 가격 ({res['base_date']} 종가): {format(res['base_close'], p_fmt)}")
+            
             c1, c2, c3 = st.columns(3)
-            c1.metric("현재가", f"{res['current_price']:,.0f}")
-            c2.metric("매수 기준 (-2σ)", f"{res['buy_target']:,.0f}", 
+            
+            c1.metric("현재가", f"{res['current_price']:{p_fmt}}")
+            
+            c2.metric("매수 기준 (-2σ)", f"{res['buy_target']:{p_fmt}}", 
                         f"{(res['mean'] - 2 * res['std'])*100:.2f}%", delta_color="inverse")
-            c3.metric("매도 기준 (+2σ)", f"{res['sell_target']:,.0f}", 
+            
+            c3.metric("매도 기준 (+2σ)", f"{res['sell_target']:{p_fmt}}", 
                         f"{(res['mean'] + 2 * res['std'])*100:.2f}%")
 
-            # 상태 판별
+            # 상태 판별 알림
             if res['current_price'] <= res['buy_target']:
                 st.error("🚨 **매수 구간 진입!** 현재가가 통계적 저점 아래에 있습니다.")
             elif res['current_price'] >= res['sell_target']:
@@ -150,11 +175,12 @@ if st.session_state['run_mode']:
             else:
                 st.info("✅ 현재 주가는 통계적 정상 범위 내에서 움직이고 있습니다.")
 
-            # 차트
+            # 차트 시각화
             fig, ax = plt.subplots(figsize=(10, 5))
             recent_df = res['df'].tail(60)
             ax.plot(recent_df.index, recent_df['Close'], color='gray', alpha=0.4, label='Confirmed History')
             
+            # 현재가 점 찍기 (날짜를 하루 뒤로 미뤄서 차트 오른쪽에 표시)
             live_date = recent_df.index[-1] + timedelta(days=1)
             ax.scatter(live_date, res['current_price'], color='blue', s=150, label='Current Price', zorder=5)
             
@@ -163,7 +189,7 @@ if st.session_state['run_mode']:
             ax.legend(loc='upper left')
             st.pyplot(fig)
             
-            # 리셋 버튼 (결과가 나왔을 때만 표시)
+            # 리셋 버튼
             if st.button("🔄 결과 초기화"):
                 st.session_state['run_mode'] = None
                 st.rerun()
