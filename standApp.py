@@ -27,7 +27,7 @@ def check_market_status(ticker_code):
     if ticker_code.endswith(".KS") or ticker_code.endswith(".KQ"):
         # 09:20 ~ 15:30 체크 (장 시작 20분 후부터)
         start = time(9, 20)
-        end = time(15, 30)
+        end = time(19, 30)
         
         if start <= current_time <= end:
             return True, "🟢 한국 정규장 운영 중"
