@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime, timedelta, time
 
 # 1. 페이지 설정
-st.set_page_config(page_title="StandApp - Market Guardian", layout="centered")
+st.set_page_config(page_title="BuyTheDeep", layout="centered")
 plt.style.use('fivethirtyeight')
 
 # 2. 시장 시간 체크 함수 (보내주신 로직 반영)
